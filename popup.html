@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Allround Web IP Lookup</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 320px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #d6c7fa 100%);
+            color: #030540;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #5e25f4 0%, #0336ff 100%);
+            padding: 20px;
+            text-align: center;
+            color: white;
+            box-shadow: 0 4px 20px rgba(94, 37, 244, 0.3);
+        }
+
+        .logo {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 12px;
+            border-radius: 12px;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            font-weight: 300;
+            margin-top: 4px;
+        }
+
+        .content {
+            padding: 24px 20px;
+        }
+
+        .info-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 16px rgba(94, 37, 244, 0.08);
+            border: 1px solid rgba(94, 37, 244, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .info-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(94, 37, 244, 0.12);
+        }
+
+        .info-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #5e25f4;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        .info-label::before {
+            content: '';
+            width: 4px;
+            height: 4px;
+            background: #5e25f4;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .info-value {
+            font-size: 16px;
+            font-weight: 500;
+            color: #030540;
+            word-break: break-all;
+            line-height: 1.4;
+        }
+
+        .loading {
+            display: inline-flex;
+            align-items: center;
+            color: #d6c7fa;
+            font-style: italic;
+        }
+
+        .loading::after {
+            content: '';
+            width: 12px;
+            height: 12px;
+            border: 2px solid #d6c7fa;
+            border-top: 2px solid #5e25f4;
+            border-radius: 50%;
+            margin-left: 8px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            padding: 16px 20px;
+            text-align: center;
+            background: rgba(94, 37, 244, 0.05);
+            border-top: 1px solid rgba(94, 37, 244, 0.1);
+        }
+
+        .footer-text {
+            font-size: 11px;
+            color: #5e25f4;
+            font-weight: 500;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            background: #0336ff;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .error {
+            color: #e74c3c;
+            font-style: italic;
+        }
+
+        .panel-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #5e25f4 0%, #0336ff 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(94, 37, 244, 0.2);
+        }
+
+        .panel-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(94, 37, 244, 0.3);
+            background: linear-gradient(135deg, #6b2cf5 0%, #1a43ff 100%);
+        }
+
+        .panel-button:active {
+            transform: translateY(0);
+        }
+
+        .panel-arrow {
+            font-size: 16px;
+            font-weight: bold;
+            opacity: 0.8;
+        }
+
+        #panel-icon {
+            font-size: 14px;
+            margin-right: 4px;
+        }
+    </style>
+    <script src="popup.js"></script>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <img src="icon.png" alt="Allround Web Logo">
+        </div>
+        <h1 class="title">IP Lookup Tool</h1>
+        <p class="subtitle">Door Allround Web</p>
+    </div>
+
+    <div class="content">
+        <div class="info-card">
+            <div class="info-label">
+                <span class="status-indicator"></span>
+                IP Adres
+            </div>
+            <div class="info-value" id="ip-address">
+                <span class="loading">Laden</span>
+            </div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-label">Reverse DNS</div>
+            <div class="info-value" id="ptr-info">
+                <span class="loading">PTR lookup uitvoeren</span>
+            </div>
+        </div>
+
+        <div class="info-card" id="panel-card" style="display: none;">
+            <div class="info-label">
+                <span id="panel-icon">🔧</span>
+                Control Panel
+            </div>
+            <div class="info-value">
+                <a href="#" id="panel-link" class="panel-button" target="_blank">
+                    <span id="panel-type">DirectAdmin</span>
+                    <span class="panel-arrow">→</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="footer-text">© 2025 Allround Web</div>
+    </div>
+</body>
+</html>

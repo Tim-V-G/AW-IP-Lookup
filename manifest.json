@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Allround Web IP Lookup",
+  "version": "2.0",
+  "description": "Snel en gemakkelijk IP-adressen opzoeken en reverse DNS lookups uitvoeren voor elke website. Door Allround Web.",
+  "author": "Allround Web",
+  "homepage_url": "https://allroundweb.nl",
+  "permissions": [
+    "activeTab",
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://ip-api.com/*",
+    "https://ip-api.com/*",
+    "https://ipinfo.io/*",
+    "https://dns.google/*",
+    "https://cloudflare-dns.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Allround Web IP Lookup",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  }
+}
