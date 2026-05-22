@@ -1,15 +1,26 @@
 // background.js - Allround Web IP Lookup Extension
 
+console.log('background.js service worker loaded');
+
 let currentIP = '';
 let cache = {
   lastUrl: '',
   ipAddress: null,
   ptrInfo: null,
   panelInfo: null,
+  source: null,
   timestamp: 0
 };
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minuten cache
+
+function extractARecord(data) {
+  if (!data || !data.Answer || !Array.isArray(data.Answer)) {
+    return null;
+  }
+  const answer = data.Answer.find(record => record.type === 1);
+  return answer ? answer.data : null;
+}
 
 // Utility functie voor API requests met timeout
 async function fetchWithTimeout(url, options = {}, timeout = 5000) {
@@ -17,11 +28,22 @@ async function fetchWithTimeout(url, options = {}, timeout = 5000) {
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
+    console.log('fetchWithTimeout request:', url, {
+      ...options,
+      timeout
+    });
+
     const response = await fetch(url, {
       ...options,
       signal: controller.signal
     });
     clearTimeout(timeoutId);
+
+    console.log('fetchWithTimeout response:', url, {
+      status: response.status,
+      statusText: response.statusText,
+      redirected: response.redirected
+    });
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -30,6 +52,11 @@ async function fetchWithTimeout(url, options = {}, timeout = 5000) {
     return response;
   } catch (error) {
     clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      console.error('fetchWithTimeout timeout:', url, timeout);
+    } else {
+      console.error('fetchWithTimeout error:', url, error.message);
+    }
     throw error;
   }
 }
@@ -47,8 +74,32 @@ async function getIPAddress(url) {
 
     console.log('Looking up IP for domain:', domain);
 
-    // Probeer verschillende API's in volgorde
+    // Probeer DNS resolvers eerst, ip-api.com alleen als fallback
     const apis = [
+      {
+        name: 'dns.google',
+        url: `https://dns.google/resolve?name=${domain}&type=A`,
+        headers: {
+          'Accept': 'application/json'
+        },
+        parseResponse: (data) => {
+          const ipAddress = extractARecord(data);
+          if (ipAddress) return ipAddress;
+          throw new Error('Geen A record gevonden');
+        }
+      },
+      {
+        name: 'cloudflare-dns',
+        url: `https://cloudflare-dns.com/dns-query?name=${domain}&type=A`,
+        headers: {
+          'Accept': 'application/dns-json'
+        },
+        parseResponse: (data) => {
+          const ipAddress = extractARecord(data);
+          if (ipAddress) return ipAddress;
+          throw new Error('Geen A record gevonden');
+        }
+      },
       {
         name: 'ip-api.com',
         url: `https://ip-api.com/json/${domain}?fields=status,message,query`,
@@ -60,39 +111,13 @@ async function getIPAddress(url) {
           if (data.status === 'fail') throw new Error(data.message);
           return data.query;
         }
-      },
-      {
-        name: 'dns.google',
-        url: `https://dns.google/resolve?name=${domain}&type=A`,
-        headers: {
-          'Accept': 'application/json'
-        },
-        parseResponse: (data) => {
-          if (data.Answer && data.Answer.length > 0) {
-            return data.Answer[0].data;
-          }
-          throw new Error('Geen A record gevonden');
-        }
-      },
-      {
-        name: 'cloudflare-dns',
-        url: `https://cloudflare-dns.com/dns-query?name=${domain}&type=A`,
-        headers: {
-          'Accept': 'application/dns-json'
-        },
-        parseResponse: (data) => {
-          if (data.Answer && data.Answer.length > 0) {
-            return data.Answer[0].data;
-          }
-          throw new Error('Geen A record gevonden');
-        }
       }
     ];
 
     // Probeer elke API tot er een werkt
     for (const api of apis) {
       try {
-        console.log(`Trying ${api.name} for IP lookup...`);
+        console.log(`Trying ${api.name} for IP lookup...`, api.url);
         const response = await fetchWithTimeout(api.url, {
           headers: api.headers
         }, 3000);
@@ -100,11 +125,25 @@ async function getIPAddress(url) {
         const data = await response.json();
         console.log(`${api.name} response:`, data);
 
-        const ipAddress = api.parseResponse(data);
+        let ipAddress;
+        try {
+          ipAddress = api.parseResponse(data);
+        } catch (parseError) {
+          console.error(`${api.name} parseResponse failed:`, parseError.message, data);
+          throw parseError;
+        }
+
         if (ipAddress) {
-          console.log(`IP found via ${api.name}:`, ipAddress);
+          console.log(`IP found via ${api.name}:`, {
+            domain,
+            api: api.name,
+            ipAddress
+          });
           currentIP = ipAddress;
-          return ipAddress;
+          return {
+            ipAddress,
+            source: api.name
+          };
         }
       } catch (error) {
         console.log(`${api.name} failed:`, error.message);
@@ -139,7 +178,7 @@ async function getPTRInfo(ipAddress) {
 
     // Converteer IP naar in-addr.arpa format voor PTR lookup
     const parts = ipAddress.split('.').reverse();
-    const ptrDomain = `${parts.join('.')}.in-addr.arpa`;
+    const ptrDomain = `${parts.join('.')}.in-addr.arp+a`;
     console.log('PTR domain:', ptrDomain);
 
     // Probeer verschillende PTR lookup methoden
@@ -183,7 +222,7 @@ async function getPTRInfo(ipAddress) {
     // Probeer elke PTR API
     for (const api of ptrApis) {
       try {
-        console.log(`Trying ${api.name} for PTR lookup...`);
+        console.log(`Trying ${api.name} for PTR lookup...`, api.url);
         const response = await fetchWithTimeout(api.url, {
           headers: {
             'Accept': 'application/json',
@@ -194,7 +233,14 @@ async function getPTRInfo(ipAddress) {
         const data = await response.json();
         console.log(`${api.name} response:`, data);
 
-        const hostname = api.parseResponse(data);
+        let hostname;
+        try {
+          hostname = api.parseResponse(data);
+        } catch (parseError) {
+          console.error(`${api.name} parseResponse failed:`, parseError.message, data);
+          throw parseError;
+        }
+
         if (hostname) {
           console.log(`PTR found via ${api.name}:`, hostname);
           return hostname;
@@ -247,43 +293,47 @@ function getCachedData(url) {
   if (cache.lastUrl === url &&
       cache.timestamp > 0 &&
       (now - cache.timestamp) < CACHE_DURATION) {
-    console.log('Using cached data for', url);
+    console.log('Using cached data for', url, { source: cache.source });
     return cache;
   }
   return null;
 }
 
 // Update cache
-function updateCache(url, ipAddress, ptrInfo, panelInfo) {
+function updateCache(url, ipAddress, ptrInfo, panelInfo, source = null) {
   cache = {
     lastUrl: url,
     ipAddress,
     ptrInfo,
     panelInfo,
+    source,
     timestamp: Date.now()
   };
-  console.log('Cache updated for', url);
+  console.log('Cache updated for', url, { source });
 }
 
 // Message listener met verbeterde error handling
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('Background received action:', request.action);
+  console.log('Background received message:', request, 'from sender:', sender);
 
   if (request.action === 'getIPAddress') {
     // Check cache eerst
     const cached = getCachedData(request.url);
     if (cached) {
-      sendResponse({ ipAddress: cached.ipAddress });
+      sendResponse({
+        ipAddress: cached.ipAddress,
+        source: cached.source
+      });
       return;
     }
 
     getIPAddress(request.url)
-      .then(ipAddress => {
-        sendResponse({ ipAddress });
+      .then(({ ipAddress, source }) => {
+        sendResponse({ ipAddress, source });
         // Start PTR lookup in background voor volgende keer
         getPTRInfo(ipAddress).then(ptrInfo => {
           const panelInfo = detectControlPanel(ptrInfo);
-          updateCache(request.url, ipAddress, ptrInfo, panelInfo);
+          updateCache(request.url, ipAddress, ptrInfo, panelInfo, source);
         });
       })
       .catch(error => {
@@ -365,7 +415,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             success: true,
             ipAddress: cached.ipAddress,
             ptrInfo: cached.ptrInfo || 'Geen PTR record gevonden',
-            panelInfo: cached.panelInfo
+            panelInfo: cached.panelInfo,
+            source: cached.source
           });
           return;
         }
@@ -373,7 +424,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.log('Fetching all data fresh for:', url);
 
         // Haal IP address op
-        const ipAddress = await getIPAddress(url);
+        const { ipAddress, source } = await getIPAddress(url);
 
         // Direct ook PTR lookup doen
         const ptrInfo = await Promise.race([
@@ -386,7 +437,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const panelInfo = detectControlPanel(ptrInfo);
 
         // Update cache
-        updateCache(url, ipAddress, ptrInfo, panelInfo);
+        updateCache(url, ipAddress, ptrInfo, panelInfo, source);
 
         sendResponse({
           success: true,
