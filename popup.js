@@ -78,20 +78,21 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       console.log('getAllData response:', response);
-
       if (response && response.success) {
         // IP adres
         if (response.ipAddress) {
           showSuccess('ip-address', response.ipAddress);
+          const ipElem = document.getElementById('ip-address');
+          if (response.source && ipElem) ipElem.title = `Bron: ${response.source}`;
         } else {
           showError('ip-address', 'Geen IP gevonden');
         }
 
         // PTR informatie
-        if (response.ptrInfo && response.ptrInfo !== 'undefined') {
+        if (response.ptrInfo && response.ptrInfo !== 'PTR lookup gefaald' && response.ptrInfo !== 'Fout bij lookup') {
           showSuccess('ptr-info', response.ptrInfo);
         } else {
-          showError('ptr-info', 'Geen PTR record gevonden');
+          showError('ptr-info', response.ptrInfo || 'Geen PTR record gevonden');
         }
 
         // Panel informatie
@@ -103,9 +104,10 @@ document.addEventListener('DOMContentLoaded', function() {
           hidePanelInfo();
         }
       } else {
-        // Error handling
-        showError('ip-address', response.error || 'Onbekende fout');
-        showError('ptr-info', 'Lookup gefaald');
+        // Error handling - display the backend error message if present
+        const err = (response && response.error) || 'Onbekende fout tijdens lookup';
+        showError('ip-address', err);
+        showError('ptr-info', err);
         hidePanelInfo();
       }
     });

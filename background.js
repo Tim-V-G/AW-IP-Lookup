@@ -321,6 +321,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const cached = getCachedData(request.url);
     if (cached) {
       sendResponse({
+        success: true,
         ipAddress: cached.ipAddress,
         source: cached.source
       });
@@ -329,7 +330,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     getIPAddress(request.url)
       .then(({ ipAddress, source }) => {
-        sendResponse({ ipAddress, source });
+        sendResponse({ success: true, ipAddress, source });
         // Start PTR lookup in background voor volgende keer
         getPTRInfo(ipAddress).then(ptrInfo => {
           const panelInfo = detectControlPanel(ptrInfo);
@@ -337,7 +338,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
       })
       .catch(error => {
-        sendResponse({ error: error.message });
+        sendResponse({ success: false, error: error.message });
       });
 
     return true; // Asynchrone response
@@ -390,7 +391,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       } catch (error) {
         console.error('PTR lookup failed:', error);
         sendResponse({
-          success: true,
+          success: false,
           ptrInfo: 'PTR lookup gefaald',
           panelInfo: null,
           error: error.message
