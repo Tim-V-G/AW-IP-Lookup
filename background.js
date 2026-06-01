@@ -178,7 +178,7 @@ async function getPTRInfo(ipAddress) {
 
     // Converteer IP naar in-addr.arpa format voor PTR lookup
     const parts = ipAddress.split('.').reverse();
-    const ptrDomain = `${parts.join('.')}.in-addr.arp+a`;
+    const ptrDomain = `${parts.join('.')}.in-addr.arpa`;
     console.log('PTR domain:', ptrDomain);
 
     // Probeer verschillende PTR lookup methoden
@@ -190,7 +190,7 @@ async function getPTRInfo(ipAddress) {
           if (data.Answer && data.Answer.length > 0) {
             let hostname = data.Answer[0].data;
             return hostname.endsWith('.') ? hostname.slice(0, -1) : hostname;
-          }
+          } 
           return null;
         }
       },
