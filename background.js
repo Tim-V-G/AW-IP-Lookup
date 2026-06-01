@@ -461,4 +461,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     return true; // Asynchrone response
   }
+
+  const VERSION_URL = "https://iplookup.awdev.nl/version.json";
+  const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 uur
+
+  async function checkForUpdate() {
+    const { lastUpdateCheck } = await chrome.storage.local.get("lastUpdateCheck");
+    const now = Date.now();
+
+    if (lastUpdateCheck && now - lastUpdateCheck < CHECK_INTERVAL_MS) {
+      return; // nog geen 24 uur geleden gecheckt
+    }
+
+    try {
+      const response = await fetch(VERSION_URL);
+      const data = await response.json();
+      const manifest = chrome.runtime.getManifest();
+
+      await chrome.storage.local.set({ lastUpdateCheck: now });
+
+      if (data.version !== manifest.version) {
+        await chrome.storage.local.set({
+          updateAvailable: true,
+          updateVersion: data.version,
+          updateUrl: data.downloadUrl,
+          updateChangelog: data.changelog
+        });
+      } else {
+        await chrome.storage.local.set({ updateAvailable: false });
+      }
+    } catch (e) {
+      console.error("Update check mislukt:", e);
+    }
+  }
+
+  checkForUpdate();
 });
