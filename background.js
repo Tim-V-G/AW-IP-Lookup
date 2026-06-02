@@ -24,7 +24,7 @@ function extractARecord(data) {
 
 const VERSION_URL = "https://iplookup.awdev.nl/version.json";
   // const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 uur
-  const CHECK_INTERVAL_MS = 60000; // 1 minuut voor testen
+  const CHECK_INTERVAL_MS = 6000; // 1 minuut voor testen
 
   async function checkForUpdate() {
     const { lastUpdateCheck } = await chrome.storage.local.get("lastUpdateCheck");
@@ -42,25 +42,45 @@ const VERSION_URL = "https://iplookup.awdev.nl/version.json";
     console.log("Update check interval reached. Checking for updates...");
 
     try {
-      const response = await fetch(VERSION_URL);
+      const response = await fetch(`${VERSION_URL}?t=${Date.now()}`, {
+        cache: "no-store"
+      });
       const data = await response.json();
       const manifest = chrome.runtime.getManifest();
+
+      console.log("Version check:", {
+        current: manifest.version,
+        remote: data.version
+      });
 
       await chrome.storage.local.set({ lastUpdateCheck: now });
 
       if (data.version !== manifest.version) {
+        console.log("NEW VERSION FOUND", {
+          current: manifest.version,
+          remote: data.version
+        });
+
         await chrome.storage.local.set({
           updateAvailable: true,
           updateVersion: data.version,
           updateUrl: data.downloadUrl,
           updateChangelog: data.changelog
         });
+
+        console.log("Update data written to storage");
       } else {
-        await chrome.storage.local.set({ updateAvailable: false });
+        console.log("No update available");
+
+        await chrome.storage.local.set({
+          updateAvailable: false
+        });
       }
     } catch (e) {
       console.error("Update check mislukt:", e);
     }
+
+    console.log("CHECK RUNNING:", new Date().toLocaleTimeString());
   }
 
   checkForUpdate();
@@ -503,5 +523,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     })();
 
     return true; // Asynchrone response
+  }
+});
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.alarms.create("updateCheck", {
+    periodInMinutes: 1
+  });
+
+  console.log("Update alarm created (installed)");
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  chrome.alarms.create("updateCheck", {
+    periodInMinutes: 1
+  });
+
+  console.log("Update alarm created (startup)");
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "updateCheck") {
+    console.log("[ALARM] update check fired");
+    checkForUpdate();
   }
 });

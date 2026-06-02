@@ -138,3 +138,31 @@ function debugPanelInfo(panelInfo) {
   });
 }
 
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local") return;
+
+  if (changes.updateAvailable?.newValue) {
+    chrome.storage.local.get(
+      [
+        "updateAvailable",
+        "updateVersion",
+        "updateUrl",
+        "updateChangelog"
+      ],
+      (result) => {
+        const banner = document.getElementById("update-banner");
+
+        document.getElementById("update-link").href =
+          result.updateUrl;
+
+        document.getElementById("update-version").textContent =
+          ` (v${result.updateVersion}: ${result.updateChangelog})`;
+
+        banner.style.display = "block";
+
+        console.log("Update banner refreshed");
+      }
+    );
+  }
+});
+
