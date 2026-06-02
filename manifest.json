@@ -7,14 +7,16 @@
   "homepage_url": "https://allroundweb.nl",
   "permissions": [
     "activeTab",
-    "tabs"
+    "tabs",
+    "storage"
   ],
   "host_permissions": [
     "http://ip-api.com/*",
     "https://ip-api.com/*",
     "https://ipinfo.io/*",
     "https://dns.google/*",
-    "https://cloudflare-dns.com/*"
+    "https://cloudflare-dns.com/*",
+    "https://iplookup.awdev.nl/*"
   ],
   "background": {
     "service_worker": "background.js"

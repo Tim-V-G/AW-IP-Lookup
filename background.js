@@ -22,6 +22,49 @@ function extractARecord(data) {
   return answer ? answer.data : null;
 }
 
+const VERSION_URL = "https://iplookup.awdev.nl/version.json";
+  // const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 uur
+  const CHECK_INTERVAL_MS = 60000; // 1 minuut voor testen
+
+  async function checkForUpdate() {
+    const { lastUpdateCheck } = await chrome.storage.local.get("lastUpdateCheck");
+    const now = Date.now();
+
+    const elapsed = now - (lastUpdateCheck || 0);
+
+    if (lastUpdateCheck && elapsed < CHECK_INTERVAL_MS) {
+      console.log(
+        `Update check skipped. Next check in ${Math.ceil((CHECK_INTERVAL_MS - elapsed) / 1000)} seconds.`
+      );
+      return;
+    }
+
+    console.log("Update check interval reached. Checking for updates...");
+
+    try {
+      const response = await fetch(VERSION_URL);
+      const data = await response.json();
+      const manifest = chrome.runtime.getManifest();
+
+      await chrome.storage.local.set({ lastUpdateCheck: now });
+
+      if (data.version !== manifest.version) {
+        await chrome.storage.local.set({
+          updateAvailable: true,
+          updateVersion: data.version,
+          updateUrl: data.downloadUrl,
+          updateChangelog: data.changelog
+        });
+      } else {
+        await chrome.storage.local.set({ updateAvailable: false });
+      }
+    } catch (e) {
+      console.error("Update check mislukt:", e);
+    }
+  }
+
+  checkForUpdate();
+
 // Utility functie voor API requests met timeout
 async function fetchWithTimeout(url, options = {}, timeout = 5000) {
   const controller = new AbortController();
@@ -461,39 +504,4 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     return true; // Asynchrone response
   }
-
-  const VERSION_URL = "https://iplookup.awdev.nl/version.json";
-  const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 uur
-
-  async function checkForUpdate() {
-    const { lastUpdateCheck } = await chrome.storage.local.get("lastUpdateCheck");
-    const now = Date.now();
-
-    if (lastUpdateCheck && now - lastUpdateCheck < CHECK_INTERVAL_MS) {
-      return; // nog geen 24 uur geleden gecheckt
-    }
-
-    try {
-      const response = await fetch(VERSION_URL);
-      const data = await response.json();
-      const manifest = chrome.runtime.getManifest();
-
-      await chrome.storage.local.set({ lastUpdateCheck: now });
-
-      if (data.version !== manifest.version) {
-        await chrome.storage.local.set({
-          updateAvailable: true,
-          updateVersion: data.version,
-          updateUrl: data.downloadUrl,
-          updateChangelog: data.changelog
-        });
-      } else {
-        await chrome.storage.local.set({ updateAvailable: false });
-      }
-    } catch (e) {
-      console.error("Update check mislukt:", e);
-    }
-  }
-
-  checkForUpdate();
 });

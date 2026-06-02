@@ -114,6 +114,19 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
+chrome.storage.local.get(
+  ["updateAvailable", "updateVersion", "updateUrl", "updateChangelog"],
+  (result) => {
+    if (result.updateAvailable) {
+      const banner = document.getElementById("update-banner");
+      document.getElementById("update-link").href = result.updateUrl;
+      document.getElementById("update-version").textContent =
+        ` (v${result.updateVersion}: ${result.updateChangelog})`;
+      banner.style.display = "block";
+    }
+  }
+);
+
 // Debug functie om panel info te loggen
 function debugPanelInfo(panelInfo) {
   console.log('Panel debug:', {
