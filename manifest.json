@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Allround Web IP Lookup",
-  "version": "2.0",
+  "version": "2.8",
   "description": "Snel en gemakkelijk IP-adressen opzoeken en reverse DNS lookups uitvoeren voor elke website. Door Allround Web.",
   "author": "Allround Web",
   "homepage_url": "https://allroundweb.nl",
